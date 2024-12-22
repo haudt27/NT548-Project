@@ -1,0 +1,14 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: role-binding
+  namespace: webapps
+subjects:
+- kind: ServiceAccount
+  name: green-service-account  # Tên của service account
+  namespace: webapps
+roleRef:
+  kind: Role
+  name: role  # Tên của Role bạn đã tạo
+  apiGroup: rbac.authorization.k8s.io
+

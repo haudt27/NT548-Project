@@ -1,0 +1,161 @@
+pipeline {
+    agent any
+    tools {
+        jdk "jdk"
+        maven "maven"
+    }
+    environment {
+        SCANNER_HOME = tool 'sonar-scanner'
+    }
+
+    stages {
+        stage('Git Checkout') {
+            steps {
+                git branch: 'main', url: 'https://github.com/haudt27/NT548-Project.git'
+            }
+        }
+
+        stage('Compile') {
+            steps {
+                dir('full-stack-blogging-app - green') {
+                    sh "mvn clean install"
+                }
+            }
+        }
+
+        stage('Trivy FS') {
+            steps {
+                sh "trivy fs . --format table -o fs.html"
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv('sonarqubeServer') {
+                    sh '''$SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=Blogging-app -Dsonar.projectKey=Blogging-app \
+                          -Dsonar.java.binaries=full-stack-blogging-app - green/target/classes'''
+                }
+            }
+        }
+
+        stage('Build') {
+            steps {
+                dir('full-stack-blogging-app - green') {
+                    sh "mvn package"
+                }
+            }
+        }
+
+        stage('Publish Artifacts') {
+            steps {
+                withMaven(globalMavenSettingsConfig: 'maven-settings', jdk: 'jdk', maven: 'maven', mavenSettingsConfig: '', traceability: true) {
+                    dir('full-stack-blogging-app - green') {
+                        sh "mvn deploy"
+                    }
+                }
+            }
+        }
+
+        stage('Docker Build & Tag') {
+            steps {
+                script {
+                    withDockerRegistry(credentialsId: 'dockerhub-credentials', url: 'https://index.docker.io/v1/') {
+                        sh "docker build -t haudt2710/nt548-project:green-latest full-stack-blogging-app - green"
+                    }
+                }
+            }
+        }
+
+        stage('Trivy Image Scan') {
+            steps {
+                sh "trivy image --format table -o image.html haudt2710/nt548-project:green-latest"
+            }
+        }
+
+        stage('Docker Push Image') {
+            steps {
+                script {
+                    withDockerRegistry(credentialsId: 'dockerhub-credentials', url: 'https://index.docker.io/v1/') {
+                        sh "docker push haudt2710/nt548-project:green-latest"
+                    }
+                }
+            }
+        }
+
+        stage('Manual Approval for Kubernetes Deploy') {
+            steps {
+                input message: 'Do you want to continue with the build?', parameters: [booleanParam(defaultValue: true, description: 'Proceed with the build?', name: 'Proceed')]
+            }
+        }
+
+        stage('K8s Deploy Green') {
+            steps {
+                withKubeCredentials(kubectlCredentials: [[
+                    caCertificate: '', 
+                    clusterName: 'devops-cluster',  
+                    contextName: '', 
+                    credentialsId: 'k8s-token', 
+                    namespace: 'webapps', 
+                    serverUrl: 'https://B7BBE4B76C1B9AA01047AA2477CA31B7.gr7.ap-southeast-1.eks.amazonaws.com'
+                ]]) {
+                    dir('full-stack-blogging-app - green') {
+                        sh "kubectl apply -f deployment-service.yml"  // Đảm bảo bạn có một file YAML cho Green
+                        sleep 20
+                    }
+                }
+            }
+        }
+
+        stage('Verify Green Deployment') {
+            steps {
+                withKubeCredentials(kubectlCredentials: [[
+                    caCertificate: '', 
+                    clusterName: 'devops-cluster', 
+                    contextName: '', 
+                    credentialsId: 'k8s-token', 
+                    namespace: 'webapps', 
+                    serverUrl: 'https://B7BBE4B76C1B9AA01047AA2477CA31B7.gr7.ap-southeast-1.eks.amazonaws.com'
+                ]]) {
+                    sh "kubectl get pods --selector=version=green"
+                    sh "kubectl get svc"
+                }
+            }
+        }
+
+        stage('Manual Approval to Switch Traffic') {
+            steps {
+                input message: 'Do you want to switch traffic to Green?', parameters: [booleanParam(defaultValue: true, description: 'Proceed with switching traffic to Green?', name: 'Proceed')]
+            }
+        }
+
+        stage('Switch Traffic to Green') {
+            steps {
+                script {
+                    // Chuyển lưu lượng từ Blue sang Green
+                    sh "kubectl patch service bloggingapp-ssvc -p '{\"spec\":{\"selector\":{\"app\":\"bloggingapp\",\"version\":\"green\"}}}'"
+                }
+            }
+        }
+
+        stage('Verify Traffic is Directed to Green') {
+            steps {
+                withKubeCredentials(kubectlCredentials: [[
+                    caCertificate: '', 
+                    clusterName: 'devops-cluster', 
+                    contextName: '', 
+                    credentialsId: 'k8s-token', 
+                    namespace: 'webapps', 
+                    serverUrl: 'https://B7BBE4B76C1B9AA01047AA2477CA31B7.gr7.ap-southeast-1.eks.amazonaws.com'
+                ]]) {
+                    sh "kubectl get svc"
+                }
+            }
+        }
+
+        stage('Cleanup Blue Deployment (Manual)') {
+            steps {
+                echo "Please clean up Blue deployment manually when you are sure that Green is stable."
+            }
+        }
+    }
+}

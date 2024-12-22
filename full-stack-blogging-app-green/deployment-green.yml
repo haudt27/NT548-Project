@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bloggingapp-deployment-green
+spec:
+  selector:
+    matchLabels:
+      app: bloggingapp
+      version: green
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        app: bloggingapp
+        version: green
+    spec:
+      serviceAccountName: green-service-account  # Thêm dòng này để chỉ định service account cho bản Green
+      containers:
+        - name: bloggingapp
+          image: haudt2710/nt548-project:green-latest  # Đây là phiên bản Green của Docker image
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+      imagePullSecrets:
+        - name: regcred # Reference to the Docker registry secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bloggingapp-ssvc-green
+spec:
+  selector:
+    app: bloggingapp
+    version: green
+  ports:
+    - protocol: "TCP"
+      port: 80
+      targetPort: 8080
+  type: LoadBalancer
