@@ -102,7 +102,7 @@ pipeline {
                     namespace: 'webapps', 
                     serverUrl: 'https://B7BBE4B76C1B9AA01047AA2477CA31B7.gr7.ap-southeast-1.eks.amazonaws.com'  // Đường dẫn API server 
                 ]]) {
-                    dir('full-stack-blogging-app') {  // Kiểm tra đường dẫn
+                    dir('full-stack-blogging-app') {  
                         sh "kubectl apply -f deployment-service.yml" 
                         sleep 20 }
                 }
