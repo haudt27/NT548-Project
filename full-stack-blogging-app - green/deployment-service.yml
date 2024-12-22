@@ -1,20 +1,22 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: bloggingapp-deployment
+  name: bloggingapp-deployment-green
 spec:
   selector:
     matchLabels:
       app: bloggingapp
+      version: green
   replicas: 2
   template:
     metadata:
       labels:
         app: bloggingapp
+        version: green
     spec:
       containers:
         - name: bloggingapp
-          image: haudt2710/nt548-project:latest # Updated image to private DockerHub image
+          image: haudt2710/nt548-project:green-latest  # Đây là phiên bản Green của Docker image
           imagePullPolicy: Always
           ports:
             - containerPort: 8080
@@ -24,12 +26,13 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: bloggingapp-ssvc
+  name: bloggingapp-ssvc-green
 spec:
   selector:
     app: bloggingapp
+    version: green
   ports:
     - protocol: "TCP"
       port: 80
-      targetPort: 8080 
+      targetPort: 8080
   type: LoadBalancer
