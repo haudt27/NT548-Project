@@ -7,3 +7,4 @@ rules:
 - apiGroups: ["*"]
   resources: ["*"]
   verbs: ["get", "list", "create", "delete", "patch", "watch"]
+
