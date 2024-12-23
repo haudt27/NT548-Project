@@ -99,7 +99,7 @@ pipeline {
                     serverUrl: 'https://B7BBE4B76C1B9AA01047AA2477CA31B7.gr7.ap-southeast-1.eks.amazonaws.com'
                 ]]) {
                     dir('full-stack-blogging-app - green') {
-                        sh "kubectl apply -f deployment-service.yml"  // Đảm bảo bạn có một file YAML cho Green
+                        sh "kubectl apply -f deployment-green.yml"  // Đảm bảo bạn có một file YAML cho Green
                         sleep 20
                     }
                 }

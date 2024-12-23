@@ -2,6 +2,7 @@
 
 # Update existing list of packages
 sudo apt-get update
+sudo apt upgrade
 
 # Install prerequisite packages
 sudo apt-get install -y \
